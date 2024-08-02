@@ -3,19 +3,24 @@ document.getElementById('generate').addEventListener('click', () => {
   
     if (url) {
       chrome.tabs.create({ url }, (tab) => {
+        // Wait for the new tab to load completely
         chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo) {
           if (tabId === tab.id && changeInfo.status === 'complete') {
             chrome.tabs.onUpdated.removeListener(listener);
   
+            // Inject the content script into the newly created tab
             chrome.scripting.executeScript(
               {
                 target: { tabId: tab.id },
-                function: extractCitationData,
+                files: ['content.js']
               },
-              (results) => {
-                const { title, author } = results[0].result;
-                const citation = `${author ? author + ', ' : ''}"${title}"`;
-                document.getElementById('citation').innerText = citation;
+              () => {
+                // Send a message to the content script to extract citation data
+                chrome.tabs.sendMessage(tab.id, { action: 'getCitationData' }, (response) => {
+                  const { title, author } = response;
+                  const citation = `${author ? author + ', ' : ''}"${title}"`;
+                  document.getElementById('citation').innerText = citation;
+                });
               }
             );
           }
@@ -25,12 +30,4 @@ document.getElementById('generate').addEventListener('click', () => {
       alert("Please enter a URL.");
     }
   });
-  
-  function extractCitationData() {
-    const title = document.querySelector('title')?.innerText || 'No title found';
-    const authorMeta = document.querySelector('meta[name="author"]');
-    const author = authorMeta ? authorMeta.getAttribute('content') : 'No author found';
-  
-    return { title, author };
-  }
   
