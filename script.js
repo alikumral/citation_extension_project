@@ -1,1 +1,0 @@
-const sayHello = () => alert("Hi There!")
